@@ -107,7 +107,7 @@ void AccuracyTable::resetOffsetStats(int offset_idx)
     return;
 
   for (std::size_t i = 0; i < table_size; ++i) {
-    table[i][offset_idx] = 8;
+    table[i][offset_idx] = ACCURACY_THRESHOLD;
   }
 }
 
