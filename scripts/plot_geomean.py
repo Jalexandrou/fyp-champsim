@@ -1,19 +1,28 @@
+import sys
 import os
+from matplotlib import use as plt_use
 import matplotlib.pyplot as plt
 import scienceplots
 from collections import defaultdict
 import numpy as np
 import math
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+plt_use('pgf')
 plt.style.use(["science", "light"])
 
 from _SPEC_WEIGHTS import SPEC2017_SHORTCODE_WEIGHTS
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, '..'))
+
 # --- CONFIGURABLE ---
-LOG_DIR = 'results'
-BENCHMARKS = ['soplex450', 'bwaves603', 'xalancbmk623',"omnetpp471", "omnetpp620" ,"mcf429", "mcf605", "gcc602"]
-BASELINE = 'bop'
-PREFETCHERS = ['berti', 'bop', 'caerus']
+LOG_DIR = os.path.join(ROOT_DIR, 'results', 'no_prefetching')
+LOG_DIR = 'results/no_prefetching'
+BENCHMARKS = ['leela641', 'cactuBSSN607', 'bwaves603', 'x264625', 'xalancbmk623', "omnetpp620", "mcf605", "gcc602"]
+BASELINE = 'no'
+PREFETCHERS = ['no', 'bop','berti']
 
 # --- PARSE IPC ---
 def parse_ipc_from_file(filepath):
@@ -35,6 +44,9 @@ def parse_ipc_from_file(filepath):
 ipc_data = defaultdict(dict)  # ipc_data[prefetcher]['benchmark/simpoint'] = ipc
 
 for benchmark in BENCHMARKS:
+    # Get the last 3 characters of the benchmark name
+    benchmark_suffix = benchmark[-3:]
+
     for prefetcher in PREFETCHERS:
         path = os.path.join(LOG_DIR, prefetcher, benchmark)
         if not os.path.isdir(path):
@@ -47,7 +59,9 @@ for benchmark in BENCHMARKS:
                 filepath = os.path.join(path, filename)
                 ipc = parse_ipc_from_file(filepath)
                 if ipc is not None:
-                    label = f"{benchmark}/{simpoint}"  # Full label: cactusADM436/436.cactusADM-1804B
+                    # Prepend the suffix to the simpoint
+                    modified_simpoint = f"{benchmark_suffix}.{simpoint}"
+                    label = f"{benchmark}/{modified_simpoint}"
                     ipc_data[prefetcher][label] = ipc
 
 # --- COMPUTE WEIGHTED SPEEDUP ---
@@ -106,6 +120,15 @@ all_labels = BENCHMARKS + ["geomean"]
 x = np.arange(len(all_labels))
 bar_width = 0.3 / len(plot_prefetchers)
 
+plt.rcParams.update({
+    'font.size': 14,
+    'axes.titlesize': 16,
+    'axes.labelsize': 14,
+    'xtick.labelsize': 12,
+    'ytick.labelsize': 15,
+    'legend.fontsize': 12,
+})
+
 fig, ax = plt.subplots(figsize=(13, 6))
 
 for i, prefetcher in enumerate(plot_prefetchers):
@@ -132,6 +155,7 @@ ax.legend(
 ax.grid(True, linestyle='--', alpha=0.7)
 
 plt.tight_layout()
-os.makedirs("figures", exist_ok=True)
-plt.savefig("figures/caerus_berti.pdf", format='pdf', dpi=300)
+FIGURE_DIR = os.path.join(ROOT_DIR, 'figures')
+os.makedirs(FIGURE_DIR, exist_ok=True)
+plt.savefig(os.path.join(FIGURE_DIR, 'bop_vs_berti.pdf'), format='pdf', dpi=300)
 # plt.show()

@@ -1,0 +1,154 @@
+import sys
+import os
+from matplotlib import use as plt_use
+import matplotlib.pyplot as plt
+import scienceplots
+from collections import defaultdict
+import numpy as np
+import math
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+plt_use('pgf')
+plt.style.use(["science", "light"])
+
+from _SPEC_WEIGHTS import SPEC2017_SHORTCODE_WEIGHTS
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, '..'))
+
+# --- CONFIGURABLE ---
+LOG_DIR = os.path.join(ROOT_DIR, 'results', 'no_prefetching')
+BENCHMARKS = ['leela641', 'cactuBSSN607', 'bwaves603', 'x264625', 'xalancbmk623', "omnetpp620", "mcf605", "gcc602"]
+PREFETCHERS = ['bop', 'berti']
+
+# --- PARSE ACCURACY ---
+def parse_accuracy_from_file(filepath, prefetcher):
+    # Decide which line prefix to look for
+    if prefetcher == "berti":
+        target_prefix = "cpu0_L1D PREFETCH REQUESTED:"
+    else:
+        target_prefix = "cpu0_L2C PREFETCH REQUESTED:"
+
+    with open(filepath) as f:
+        for line in f:
+            if line.startswith(target_prefix):
+                parts = line.split()
+                try:
+                    useful = int(parts[7])
+                    useless = int(parts[9])
+                    total = useful + useless
+                    if total == 0:
+                        return None
+                    return useful / total
+                except (IndexError, ValueError):
+                    print(f"Warning: Failed to parse line in {filepath}")
+                    return None
+    return None
+
+# --- GATHER ACCURACY DATA ---
+accuracy_data = defaultdict(dict)  # accuracy_data[prefetcher]['benchmark/simpoint'] = accuracy
+
+for benchmark in BENCHMARKS:
+    benchmark_suffix = benchmark[-3:]
+
+    for prefetcher in PREFETCHERS:
+        path = os.path.join(LOG_DIR, prefetcher, benchmark)
+        if not os.path.isdir(path):
+            print(f"Missing directory: {path}")
+            continue
+
+        for filename in os.listdir(path):
+            if filename.endswith('.txt'):
+                simpoint = filename.replace('.txt', '')
+                filepath = os.path.join(path, filename)
+                acc = parse_accuracy_from_file(filepath, prefetcher)
+                if acc is not None:
+                    modified_simpoint = f"{benchmark_suffix}.{simpoint}"
+                    label = f"{benchmark}/{modified_simpoint}"
+                    accuracy_data[prefetcher][label] = acc
+
+# --- COMPUTE WEIGHTED GEOMEAN ---
+def weighted_geomean(values, weights):
+    log_sum = 0
+    for v, w in zip(values, weights):
+        if v <= 0:
+            return 0.0
+        log_sum += math.log(v) * w
+    return math.exp(log_sum)
+
+geomean_accuracies = defaultdict(dict)  # geomean_accuracies[prefetcher][benchmark] = weighted_geomean
+
+for benchmark in BENCHMARKS:
+    weight_map = SPEC2017_SHORTCODE_WEIGHTS.get(benchmark, {})
+    simpoints = list(weight_map.keys())
+
+    for prefetcher in PREFETCHERS:
+        accs = []
+        weights = []
+
+        for sp in simpoints:
+            label = f"{benchmark}/{sp}"
+            acc = accuracy_data[prefetcher].get(label)
+            if acc is not None:
+                accs.append(acc)
+                weights.append(weight_map[sp])
+
+        if accs and weights:
+            geo = weighted_geomean(accs, weights)
+        else:
+            raise KeyError(f"Incomplete data for benchmark: {benchmark}")
+
+        geomean_accuracies[prefetcher][benchmark] = geo
+
+# Compute overall (equally-weighted) geomean across benchmarks
+for prefetcher in PREFETCHERS:
+    values = [geomean_accuracies[prefetcher][bm] for bm in BENCHMARKS]
+    if values:
+        log_sum = sum(math.log(v) for v in values if v > 0)
+        overall_geo = math.exp(log_sum / len(values))
+    else:
+        overall_geo = 0.0
+    geomean_accuracies[prefetcher]["geomean"] = overall_geo
+
+# --- PLOTTING ---
+all_labels = BENCHMARKS + ["geomean"]
+x = np.arange(len(all_labels))
+bar_width = 0.3 / len(PREFETCHERS)
+
+plt.rcParams.update({
+    'font.size': 14,
+    'axes.titlesize': 16,
+    'axes.labelsize': 14,
+    'xtick.labelsize': 12,
+    'ytick.labelsize': 15,
+    'legend.fontsize': 12,
+})
+
+fig, ax = plt.subplots(figsize=(13, 6))
+
+for i, prefetcher in enumerate(PREFETCHERS):
+    heights = [geomean_accuracies[prefetcher].get(bm, 0.0) for bm in all_labels]
+    offsets = x + i * bar_width
+    ax.bar(offsets, heights, width=bar_width, label=prefetcher, edgecolor='black', linewidth=0.5)
+
+ax.set_xticks(x + bar_width * (len(PREFETCHERS) - 1) / 2)
+ax.set_xticklabels(all_labels, rotation=45, ha='right')
+ax.set_ylim(bottom=0.0, top=1.0)
+ax.yaxis.set_major_locator(plt.MaxNLocator(nbins=10))
+ax.set_ylabel("Accuracy")
+ax.set_xlabel("Benchmark")
+ax.legend(
+    loc='upper center',
+    bbox_to_anchor=(0.5, 1.15),
+    ncol=len(PREFETCHERS),
+    frameon=True,
+    edgecolor='black'
+)
+ax.grid(True, linestyle='--', alpha=0.7)
+
+plt.tight_layout()
+FIGURE_DIR = os.path.join(ROOT_DIR, 'figures')
+os.makedirs(FIGURE_DIR, exist_ok=True)
+plt.savefig(os.path.join(FIGURE_DIR, 'bop_vs_berti_accuracy.pdf'), format='pdf', dpi=300)
+# plt.show()

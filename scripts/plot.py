@@ -1,15 +1,21 @@
+import sys
 import os
 import matplotlib.pyplot as plt
 import scienceplots
 from collections import defaultdict
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 plt.style.use(["science", "light"])
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, '..'))
+
 # --- CONFIGURABLE ---
-LOG_DIR = 'results'
+LOG_DIR = os.path.join(ROOT_DIR, 'results', 'no_prefetching')
 BENCHMARKS = ['cactusADM436', 'bwaves603', 'xalancbmk623']
 BASELINE = 'no'
-PREFETCHERS = ['no', 'berti', 'bop', 'caerus']
+PREFETCHERS = ['no', 'berti', 'bop', 'no_caerus']
 SIMPOINTS = []  # Will be auto-filled with (benchmark/simpoint)
 
 # --- FUNCTION TO PARSE IPC ---
@@ -94,7 +100,7 @@ ax.legend(
 ax.grid(True, linestyle='--', alpha=0.7)
 
 plt.tight_layout()
-if not os.path.exists(f"figures"):
-    os.makedirs(f"figures")
-plt.savefig("figures/new_test.pdf", format='pdf', dpi=300)
+FIGURE_DIR = os.path.join(ROOT_DIR, 'figures')
+os.makedirs(FIGURE_DIR, exist_ok=True)
+plt.savefig(os.path.join(FIGURE_DIR, 'test.pdf'), format='pdf', dpi=300)
 # plt.show()

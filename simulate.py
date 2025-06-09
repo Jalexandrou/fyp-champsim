@@ -45,7 +45,7 @@ if args.benchmark not in SPEC2017_SHORTCODE:
     print("Invalid benchmark: ", args.benchmark)
     sys.exit(1)
 
-config_path = args.config if args.config else "no_prefetch.json"
+config_path = args.config if args.config else "run_configs/no_prefetch.json"
 with open(config_path) as config_file:
     config = json.load(config_file)
     prefetcher_selected_L1 = config["L1D"]["prefetcher"]
