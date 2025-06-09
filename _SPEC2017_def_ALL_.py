@@ -1,5 +1,28 @@
 SPEC2017_PATH = "/home/shared/SPEC2017_Traces_ChampSim/"
 
+SPEC2017_BENCHMARKS = [
+    "perlbench600",
+    "gcc602",
+    "bwaves603",
+    "mcf605",
+    "cactuBSSN607",
+    "lbm619",
+    "omnetpp620",
+    "wrf621",
+    "xalancbmk623",
+    "x264625",
+    "cam4627",
+    "pop2628",
+    "deepsjeng631",
+    "imagick638",
+    "leela641",
+    "nab644",
+    "exchange2648",
+    "fotonik3d649",
+    "roms654",
+    "xz657"
+]
+
 SPEC2017_SHORTCODE = {
     "perlbench400": 
     [

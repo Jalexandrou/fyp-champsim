@@ -19,7 +19,6 @@ ROOT_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, '..'))
 
 # --- CONFIGURABLE ---
 LOG_DIR = os.path.join(ROOT_DIR, 'results', 'no_prefetching')
-LOG_DIR = 'results/no_prefetching'
 BENCHMARKS = ['leela641', 'cactuBSSN607', 'bwaves603', 'x264625', 'xalancbmk623', "omnetpp620", "mcf605", "gcc602"]
 BASELINE = 'no'
 PREFETCHERS = ['no', 'bop','berti']
@@ -117,6 +116,7 @@ for prefetcher in plot_prefetchers:
 
 # --- PLOTTING ---
 all_labels = BENCHMARKS + ["geomean"]
+display_labels = [bm[-3:] + '.' + bm[:-3] for bm in BENCHMARKS] + ["geomean"]
 x = np.arange(len(all_labels))
 bar_width = 0.3 / len(plot_prefetchers)
 
@@ -140,7 +140,7 @@ for i, prefetcher in enumerate(plot_prefetchers):
 ax.axhline(1.0, linestyle='--', color='black', linewidth=1, label='baseline')
 
 ax.set_xticks(x + bar_width * (len(plot_prefetchers) - 1) / 2)
-ax.set_xticklabels(all_labels, rotation=45, ha='right')
+ax.set_xticklabels(display_labels, rotation=45, ha='right')
 ax.set_ylim(bottom=0.8)
 ax.yaxis.set_major_locator(plt.MaxNLocator(nbins=10))
 ax.set_ylabel("Speedup")

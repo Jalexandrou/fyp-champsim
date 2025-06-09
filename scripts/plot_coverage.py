@@ -13,14 +13,16 @@ plt_use('pgf')
 plt.style.use(["science", "light"])
 
 from _SPEC_WEIGHTS import SPEC2017_SHORTCODE_WEIGHTS
+from _SPEC2017_def_ALL_ import SPEC2017_BENCHMARKS
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, '..'))
 
 # --- CONFIGURABLE ---
-LOG_DIR = os.path.join(ROOT_DIR, 'results', 'no_prefetching')
-BENCHMARKS = ['leela641', 'cactuBSSN607', 'bwaves603', 'x264625', 'xalancbmk623', "omnetpp620", "mcf605", "gcc602"]
-PREFETCHERS = ['bop', 'berti']
+LOG_DIR = os.path.join(ROOT_DIR, 'results', 'stride_baseline')
+# BENCHMARKS = ['leela641', 'cactuBSSN607', 'bwaves603', 'x264625', 'xalancbmk623', "omnetpp620", "mcf605", "gcc602"]
+BENCHMARKS = SPEC2017_BENCHMARKS
+PREFETCHERS = ['bop', 'caerus']
 
 # --- PARSE COVERAGE ---
 def parse_coverage_from_file(filepath, prefetcher):
@@ -120,6 +122,7 @@ for prefetcher in PREFETCHERS:
 
 # --- PLOTTING ---
 all_labels = BENCHMARKS + ["geomean"]
+display_labels = [bm[-3:] + '.' + bm[:-3] for bm in BENCHMARKS] + ["geomean"]
 x = np.arange(len(all_labels))
 bar_width = 0.3 / len(PREFETCHERS)
 
@@ -140,7 +143,7 @@ for i, prefetcher in enumerate(PREFETCHERS):
     ax.bar(offsets, heights, width=bar_width, label=prefetcher, edgecolor='black', linewidth=0.5)
 
 ax.set_xticks(x + bar_width * (len(PREFETCHERS) - 1) / 2)
-ax.set_xticklabels(all_labels, rotation=45, ha='right')
+ax.set_xticklabels(display_labels, rotation=45, ha='right')
 ax.set_ylim(bottom=0.0, top=1.0)
 ax.yaxis.set_major_locator(plt.MaxNLocator(nbins=10))
 ax.set_ylabel("Coverage")
@@ -157,5 +160,5 @@ ax.grid(True, linestyle='--', alpha=0.7)
 plt.tight_layout()
 FIGURE_DIR = os.path.join(ROOT_DIR, 'figures')
 os.makedirs(FIGURE_DIR, exist_ok=True)
-plt.savefig(os.path.join(FIGURE_DIR, 'bop_vs_berti_coverage.pdf'), format='pdf', dpi=300)
+plt.savefig(os.path.join(FIGURE_DIR, 'bop_vs_caerus_coverage.pdf'), format='pdf', dpi=300)
 # plt.show()

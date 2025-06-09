@@ -20,36 +20,43 @@ ROOT_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, '..'))
 # --- CONFIGURABLE ---
 LOG_DIR = os.path.join(ROOT_DIR, 'results', 'no_prefetching')
 BENCHMARKS = ['leela641', 'cactuBSSN607', 'bwaves603', 'x264625', 'xalancbmk623', "omnetpp620", "mcf605", "gcc602"]
-PREFETCHERS = ['bop', 'berti']
+BASELINE = 'no'
+PREFETCHERS = ['no', 'bop','berti']
 
-# --- PARSE ACCURACY ---
-def parse_accuracy_from_file(filepath, prefetcher):
-    # Decide which line prefix to look for
-    if prefetcher == "berti":
-        target_prefix = "cpu0_L1D PREFETCH REQUESTED:"
-    else:
-        target_prefix = "cpu0_L2C PREFETCH REQUESTED:"
+# --- PARSE DRAM TRAFFIC ---
+def parse_dram_traffic(filepath):
+    row_hit = 0
+    row_miss = 0
+    last_line_was_rq_hit = False
 
     with open(filepath) as f:
         for line in f:
-            if line.startswith(target_prefix):
+            line = line.strip()
+            if line.startswith("Channel 0 RQ ROW_BUFFER_HIT:"):
                 parts = line.split()
                 try:
-                    useful = int(parts[7])
-                    useless = int(parts[9])
-                    total = useful + useless
-                    if total == 0:
-                        return None
-                    return useful / total
-                except (IndexError, ValueError):
-                    print(f"Warning: Failed to parse line in {filepath}")
-                    return None
-    return None
+                    row_hit += int(parts[-1])
+                    last_line_was_rq_hit = True
+                except:
+                    last_line_was_rq_hit = False
+            elif line.startswith("ROW_BUFFER_MISS:") and last_line_was_rq_hit:
+                parts = line.split()
+                try:
+                    row_miss += int(parts[-1])
+                except:
+                    pass
+                last_line_was_rq_hit = False
+            else:
+                last_line_was_rq_hit = False
 
-# --- GATHER ACCURACY DATA ---
-accuracy_data = defaultdict(dict)  # accuracy_data[prefetcher]['benchmark/simpoint'] = accuracy
+    total = row_hit + row_miss
+    return total if total > 0 else None
+
+# --- GATHER RESULTS ---
+raw_traffic = defaultdict(dict)  # raw_traffic[prefetcher]['benchmark/simpoint'] = traffic
 
 for benchmark in BENCHMARKS:
+    # Get the last 3 characters of the benchmark name
     benchmark_suffix = benchmark[-3:]
 
     for prefetcher in PREFETCHERS:
@@ -62,60 +69,69 @@ for benchmark in BENCHMARKS:
             if filename.endswith('.txt'):
                 simpoint = filename.replace('.txt', '')
                 filepath = os.path.join(path, filename)
-                acc = parse_accuracy_from_file(filepath, prefetcher)
-                if acc is not None:
+                traffic = parse_dram_traffic(filepath)
+                if traffic is not None:
+                    # Prepend the suffix to the simpoint
                     modified_simpoint = f"{benchmark_suffix}.{simpoint}"
                     label = f"{benchmark}/{modified_simpoint}"
-                    accuracy_data[prefetcher][label] = acc
+                    raw_traffic[prefetcher][label] = traffic
 
 # --- COMPUTE WEIGHTED GEOMEAN ---
 def weighted_geomean(values, weights):
     log_sum = 0
     for v, w in zip(values, weights):
         if v <= 0:
-            return 0.0
+            return 0.0  
         log_sum += math.log(v) * w
     return math.exp(log_sum)
 
-geomean_accuracies = defaultdict(dict)  # geomean_accuracies[prefetcher][benchmark] = weighted_geomean
+geomean_traffic = defaultdict(dict)  # geomean_traffic[prefetcher][benchmark] = weighted_geomean
 
 for benchmark in BENCHMARKS:
     weight_map = SPEC2017_SHORTCODE_WEIGHTS.get(benchmark, {})
     simpoints = list(weight_map.keys())
 
     for prefetcher in PREFETCHERS:
-        accs = []
+        normalised_traffic_list = []
         weights = []
 
         for sp in simpoints:
             label = f"{benchmark}/{sp}"
-            acc = accuracy_data[prefetcher].get(label)
-            if acc is not None:
-                accs.append(acc)
-                weights.append(weight_map[sp])
+            base_traffic = raw_traffic[BASELINE].get(label)
+            test_traffic = raw_traffic[prefetcher].get(label)
 
-        if accs and weights:
-            geo = weighted_geomean(accs, weights)
+            if base_traffic and test_traffic:
+                normalised_traffic = test_traffic / base_traffic
+                weight = weight_map[sp]
+                normalised_traffic_list.append(normalised_traffic)
+                weights.append(weight)
+
+        if normalised_traffic_list and weights:
+            geo = weighted_geomean(normalised_traffic_list, weights)
         else:
-            raise KeyError(f"Incomplete data for benchmark: {benchmark}")
+            raise KeyError(
+              f"Incomplete data for benchmark: {benchmark}")
 
-        geomean_accuracies[prefetcher][benchmark] = geo
+        geomean_traffic[prefetcher][benchmark] = geo
+
+plot_prefetchers = [p for p in PREFETCHERS if p != BASELINE]
 
 # Compute overall (equally-weighted) geomean across benchmarks
-for prefetcher in PREFETCHERS:
-    values = [geomean_accuracies[prefetcher][bm] for bm in BENCHMARKS]
+for prefetcher in plot_prefetchers:
+    # Get all benchmark-level geomeans for this prefetcher
+    values = [geomean_traffic[prefetcher][bm] for bm in BENCHMARKS]
     if values:
-        log_sum = sum(math.log(v) for v in values if v > 0)
+        log_sum = sum(math.log(v) for v in values)
         overall_geo = math.exp(log_sum / len(values))
     else:
         overall_geo = 0.0
-    geomean_accuracies[prefetcher]["geomean"] = overall_geo
+    geomean_traffic[prefetcher]["geomean"] = overall_geo
 
 # --- PLOTTING ---
 all_labels = BENCHMARKS + ["geomean"]
 display_labels = [bm[-3:] + '.' + bm[:-3] for bm in BENCHMARKS] + ["geomean"]
 x = np.arange(len(all_labels))
-bar_width = 0.3 / len(PREFETCHERS)
+bar_width = 0.3 / len(plot_prefetchers)
 
 plt.rcParams.update({
     'font.size': 14,
@@ -128,21 +144,23 @@ plt.rcParams.update({
 
 fig, ax = plt.subplots(figsize=(13, 6))
 
-for i, prefetcher in enumerate(PREFETCHERS):
-    heights = [geomean_accuracies[prefetcher].get(bm, 0.0) for bm in all_labels]
+for i, prefetcher in enumerate(plot_prefetchers):
+    heights = [geomean_traffic[prefetcher].get(bm, 0.0) for bm in all_labels]
     offsets = x + i * bar_width
     ax.bar(offsets, heights, width=bar_width, label=prefetcher, edgecolor='black', linewidth=0.5)
 
-ax.set_xticks(x + bar_width * (len(PREFETCHERS) - 1) / 2)
+ax.axhline(1.0, linestyle='--', color='black', linewidth=1, label='baseline')
+
+ax.set_xticks(x + bar_width * (len(plot_prefetchers) - 1) / 2)
 ax.set_xticklabels(display_labels, rotation=45, ha='right')
-ax.set_ylim(bottom=0.0, top=1.0)
+ax.set_ylim(bottom=0.8)
 ax.yaxis.set_major_locator(plt.MaxNLocator(nbins=10))
-ax.set_ylabel("Accuracy")
+ax.set_ylabel("Normalized DRAM Traffic")
 ax.set_xlabel("Benchmark")
 ax.legend(
     loc='upper center',
     bbox_to_anchor=(0.5, 1.15),
-    ncol=len(PREFETCHERS),
+    ncol=len(plot_prefetchers) + 1,
     frameon=True,
     edgecolor='black'
 )
@@ -151,5 +169,5 @@ ax.grid(True, linestyle='--', alpha=0.7)
 plt.tight_layout()
 FIGURE_DIR = os.path.join(ROOT_DIR, 'figures')
 os.makedirs(FIGURE_DIR, exist_ok=True)
-plt.savefig(os.path.join(FIGURE_DIR, 'bop_vs_berti_accuracy.pdf'), format='pdf', dpi=300)
+plt.savefig(os.path.join(FIGURE_DIR, 'normalised_traffic.pdf'), format='pdf', dpi=300)
 # plt.show()
