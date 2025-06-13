@@ -23,6 +23,31 @@ SPEC2017_BENCHMARKS = [
     "xz657"
 ]
 
+SPEC_MEMINT = [
+    "bzip2401",
+    "cactusADM436",
+    "leslie3d437",
+    "soplex450",
+    "calculix454",
+    "hmmer456",
+    "GemsFDTD459",
+    "libquantum462",
+    "sphinx3482",
+    "perlbench600",
+    "gcc602",
+    "bwaves603",
+    "mcf605",
+    "lbm619",
+    "wrf621",
+    "xalancbmk623",
+    "x264625",
+    "cam4627",
+    "pop2628",
+    "leela641",
+    "fotonik3d649",
+    "roms654"
+]
+
 SPEC2017_SHORTCODE = {
     "perlbench400": 
     [
@@ -60,12 +85,12 @@ SPEC2017_SHORTCODE = {
         "429.mcf-22B.champsimtrace.xz",
         "429.mcf-51B.champsimtrace.xz"
     ],
-    "milc433": 
-    [
-        "433.milc-127B.champsimtrace.xz",
-        "433.milc-274B.champsimtrace.xz",
-        "433.milc-337B.champsimtrace.xz"
-    ],
+    # "milc433": 
+    # [
+    #     "433.milc-127B.champsimtrace.xz",
+    #     "433.milc-274B.champsimtrace.xz",
+    #     "433.milc-337B.champsimtrace.xz"
+    # ],
     # No weights available for zeus so commented out
     # "zeusmp434":  
     # [

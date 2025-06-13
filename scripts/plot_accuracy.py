@@ -13,14 +13,15 @@ plt_use('pgf')
 plt.style.use(["science", "light"])
 
 from _SPEC_WEIGHTS import SPEC2017_SHORTCODE_WEIGHTS
+from _SPEC2017_def_ALL_ import SPEC_MEMINT, SPEC2017_BENCHMARKS, SPEC2017_SHORTCODE
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, '..'))
 
 # --- CONFIGURABLE ---
-LOG_DIR = os.path.join(ROOT_DIR, 'results', 'no_prefetching')
-BENCHMARKS = ['leela641', 'cactuBSSN607', 'bwaves603', 'x264625', 'xalancbmk623', "omnetpp620", "mcf605", "gcc602"]
-PREFETCHERS = ['bop', 'berti']
+LOG_DIR = os.path.join(ROOT_DIR, 'results_final', 'nocross')
+BENCHMARKS = SPEC_MEMINT
+PREFETCHERS = ['berti', 'bop', 'caerus']
 
 # --- PARSE ACCURACY ---
 def parse_accuracy_from_file(filepath, prefetcher):
@@ -149,7 +150,7 @@ ax.legend(
 ax.grid(True, linestyle='--', alpha=0.7)
 
 plt.tight_layout()
-FIGURE_DIR = os.path.join(ROOT_DIR, 'figures')
+FIGURE_DIR = os.path.join(ROOT_DIR, 'figures_final')
 os.makedirs(FIGURE_DIR, exist_ok=True)
-plt.savefig(os.path.join(FIGURE_DIR, 'bop_vs_berti_accuracy.pdf'), format='pdf', dpi=300)
+plt.savefig(os.path.join(FIGURE_DIR, 'ACC_MEMINT.pdf'), format='pdf', dpi=300)
 # plt.show()

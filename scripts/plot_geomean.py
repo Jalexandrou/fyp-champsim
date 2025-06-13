@@ -13,15 +13,16 @@ plt_use('pgf')
 plt.style.use(["science", "light"])
 
 from _SPEC_WEIGHTS import SPEC2017_SHORTCODE_WEIGHTS
+from _SPEC2017_def_ALL_ import SPEC_MEMINT, SPEC2017_BENCHMARKS, SPEC2017_SHORTCODE
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, '..'))
 
 # --- CONFIGURABLE ---
-LOG_DIR = os.path.join(ROOT_DIR, 'results', 'no_prefetching')
-BENCHMARKS = ['leela641', 'cactuBSSN607', 'bwaves603', 'x264625', 'xalancbmk623', "omnetpp620", "mcf605", "gcc602"]
-BASELINE = 'no'
-PREFETCHERS = ['no', 'bop','berti']
+LOG_DIR = os.path.join(ROOT_DIR, 'results_final', 'nocross')
+BENCHMARKS = SPEC_MEMINT
+BASELINE = 'stride'
+PREFETCHERS = ['stride', 'berti', 'bop', 'caerus']
 
 # --- PARSE IPC ---
 def parse_ipc_from_file(filepath):
@@ -114,6 +115,27 @@ for prefetcher in plot_prefetchers:
         overall_geo = 0.0
     geomean_speedups[prefetcher]["geomean"] = overall_geo
 
+print("\n=== Geomean Speedups Over Baseline ===")
+for prefetcher in plot_prefetchers:
+    geo = geomean_speedups[prefetcher]["geomean"]
+    print(f"{prefetcher}: {geo:.4f}x")
+
+caerus_geo = geomean_speedups['caerus']["geomean"]
+bop_geo = geomean_speedups['bop']["geomean"]
+berti_geo = geomean_speedups['berti']["geomean"]
+
+if bop_geo > 0:
+    caerus_over_bop = caerus_geo / bop_geo
+    print(f"\nCaerus over BOP geomean speedup: {caerus_over_bop:.4f}x")
+else:
+    print("\nWarning: BOP geomean is zero, cannot compute Caerus over BOP speedup.")
+
+if berti_geo > 0:
+    caerus_over_berti = caerus_geo / berti_geo
+    print(f"Caerus over Berti geomean speedup: {caerus_over_berti:.4f}x")
+else:
+    print("Warning: Berti geomean is zero, cannot compute Caerus over Berti speedup.")
+
 # --- PLOTTING ---
 all_labels = BENCHMARKS + ["geomean"]
 display_labels = [bm[-3:] + '.' + bm[:-3] for bm in BENCHMARKS] + ["geomean"]
@@ -136,7 +158,6 @@ for i, prefetcher in enumerate(plot_prefetchers):
     offsets = x + i * bar_width
     ax.bar(offsets, heights, width=bar_width, label=prefetcher, edgecolor='black', linewidth=0.5)
 
-
 ax.axhline(1.0, linestyle='--', color='black', linewidth=1, label='baseline')
 
 ax.set_xticks(x + bar_width * (len(plot_prefetchers) - 1) / 2)
@@ -155,7 +176,7 @@ ax.legend(
 ax.grid(True, linestyle='--', alpha=0.7)
 
 plt.tight_layout()
-FIGURE_DIR = os.path.join(ROOT_DIR, 'figures')
+FIGURE_DIR = os.path.join(ROOT_DIR, 'figures_final')
 os.makedirs(FIGURE_DIR, exist_ok=True)
-plt.savefig(os.path.join(FIGURE_DIR, 'bop_vs_berti.pdf'), format='pdf', dpi=300)
+plt.savefig(os.path.join(FIGURE_DIR, 'IPC_CROSSING_MEMINT.pdf'), format='pdf', dpi=300)
 # plt.show()

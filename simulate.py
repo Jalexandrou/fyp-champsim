@@ -10,11 +10,11 @@ import glob
 import shutil
 from concurrent.futures import ThreadPoolExecutor
 
-from _SPEC2017_def import SPEC2017_SHORTCODE, SPEC2017_PATH
+from _SPEC2017_def_ALL_ import SPEC2017_SHORTCODE, SPEC2017_PATH
 
 # Define the warmup and instructions to run (in millions)
-WARMUP_INSTRUCTIONS = 0
-SIMULATION_INSTRUCTIONS = 2
+WARMUP_INSTRUCTIONS = 50
+SIMULATION_INSTRUCTIONS = 200
 
 # Parse arguments
 parser = argparse.ArgumentParser(description='Run ChampSim on SPEC2017 benchmarks')
@@ -118,10 +118,9 @@ def champsim_kernel(kernel_arg):
     (benchmark, job_number, total) = kernel_arg
 
     benchmark_split = benchmark.split('.')
-    benchmark_num = benchmark_split[0]
     benchmark_name = benchmark_split[1]
 
-    with open(f"results/{prefetcher}/{args.benchmark}/{benchmark_num}.{benchmark_name}.txt", "w+") as output_file:
+    with open(f"results/{prefetcher}/{args.benchmark}/{benchmark_name}.txt", "w+") as output_file:
         print(f"Dispatching {benchmark} ... [{job_number+1} / {total+1}]")
         result = subprocess.run([
             f"{build_dir}/champsim", 

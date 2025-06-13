@@ -13,15 +13,16 @@ plt_use('pgf')
 plt.style.use(["science", "light"])
 
 from _SPEC_WEIGHTS import SPEC2017_SHORTCODE_WEIGHTS
+from _SPEC2017_def_ALL_ import SPEC_MEMINT, SPEC2017_BENCHMARKS, SPEC2017_SHORTCODE
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, '..'))
 
 # --- CONFIGURABLE ---
-LOG_DIR = os.path.join(ROOT_DIR, 'results', 'no_prefetching')
-BENCHMARKS = ['leela641', 'cactuBSSN607', 'bwaves603', 'x264625', 'xalancbmk623', "omnetpp620", "mcf605", "gcc602"]
-BASELINE = 'no'
-PREFETCHERS = ['no', 'bop','berti']
+LOG_DIR = os.path.join(ROOT_DIR, 'results_final', 'nocross')
+BENCHMARKS = SPEC_MEMINT
+BASELINE = 'stride'
+PREFETCHERS = ['stride', 'berti', 'bop', 'caerus']
 
 # --- PARSE DRAM TRAFFIC ---
 def parse_dram_traffic(filepath):
@@ -127,6 +128,20 @@ for prefetcher in plot_prefetchers:
         overall_geo = 0.0
     geomean_traffic[prefetcher]["geomean"] = overall_geo
 
+print("\n=== Geomean Normalized DRAM Traffic ===")
+for prefetcher in plot_prefetchers:
+    geo = geomean_traffic[prefetcher]["geomean"]
+    print(f"{prefetcher}: {geo:.4f}x")
+
+bop_geo = geomean_traffic['bop']["geomean"]
+caerus_geo = geomean_traffic['caerus']["geomean"]
+
+if bop_geo > 0:
+    reduction = (bop_geo - caerus_geo) / bop_geo * 100
+    print(f"\nCaerus vs BOP DRAM traffic reduction: {reduction:.2f}%")
+else:
+    print("\nWarning: BOP geomean is zero — cannot compute percentage reduction.")
+
 # --- PLOTTING ---
 all_labels = BENCHMARKS + ["geomean"]
 display_labels = [bm[-3:] + '.' + bm[:-3] for bm in BENCHMARKS] + ["geomean"]
@@ -167,7 +182,7 @@ ax.legend(
 ax.grid(True, linestyle='--', alpha=0.7)
 
 plt.tight_layout()
-FIGURE_DIR = os.path.join(ROOT_DIR, 'figures')
+FIGURE_DIR = os.path.join(ROOT_DIR, 'figures_final')
 os.makedirs(FIGURE_DIR, exist_ok=True)
-plt.savefig(os.path.join(FIGURE_DIR, 'normalised_traffic.pdf'), format='pdf', dpi=300)
+plt.savefig(os.path.join(FIGURE_DIR, 'DRAM_MEMINT.pdf'), format='pdf', dpi=300)
 # plt.show()

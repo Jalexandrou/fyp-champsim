@@ -11,18 +11,19 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 plt_use('pgf')
 plt.style.use(["science", "light"])
+# custom_colors = ['#33a02c', '#a6cee3', '#b2df8a', '#1f78b4']
 
 from _SPEC_WEIGHTS import SPEC2017_SHORTCODE_WEIGHTS
-from _SPEC2017_def_ALL_ import SPEC2017_BENCHMARKS
+from _SPEC2017_def_ALL_ import SPEC_MEMINT, SPEC2017_BENCHMARKS, SPEC2017_SHORTCODE
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, '..'))
 
 # --- CONFIGURABLE ---
-LOG_DIR = os.path.join(ROOT_DIR, 'results', 'stride_baseline')
-BENCHMARKS = ["gcc602"]
-# BENCHMARKS = SPEC2017_BENCHMARKS
-PREFETCHERS = ['stride', 'bop', 'berti_stride', 'caerus']
+LOG_DIR = os.path.join(ROOT_DIR, 'results_final', 'nocross')
+BENCHMARKS = SPEC_MEMINT
+PREFETCHERS = ['stride', 'berti', 'bop', 'caerus']
+
 NUM_INSTRUCTIONS = 200_000_000
 EPSILON = 1e-6
 
@@ -111,9 +112,6 @@ for prefetcher in PREFETCHERS:
             overall_geo = 0.0
         geomean_mpki[prefetcher][level]["geomean"] = overall_geo
 
-# --- PLOT SINGLE BAR CHART (X = L1D, L2C, LLC; Bars = Prefetchers) ---
-FIGURE_DIR = os.path.join(ROOT_DIR, 'figures')
-os.makedirs(FIGURE_DIR, exist_ok=True)
 
 fig, ax = plt.subplots(figsize=(8, 6))
 
@@ -141,4 +139,6 @@ ax.legend(
 ax.grid(True, linestyle='--', alpha=0.7)
 
 plt.tight_layout()
-plt.savefig(os.path.join(FIGURE_DIR, 'cache_mpki.pdf'), format='pdf', dpi=300)
+FIGURE_DIR = os.path.join(ROOT_DIR, 'figures_final')
+os.makedirs(FIGURE_DIR, exist_ok=True)
+plt.savefig(os.path.join(FIGURE_DIR, 'MPKI_MEMINT.pdf'), format='pdf', dpi=300)

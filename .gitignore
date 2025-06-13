@@ -23,9 +23,12 @@ vcpkg_installed/
 .vscode
 
 get_weights.py
+plot_dse_geomean.py
 
 SPEC_quick
 weights-and-simpoints-speccpu/
 log
 figures
+figures_final/
 results/
+results_final/
